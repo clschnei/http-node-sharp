@@ -17,10 +17,23 @@ const addProcess = (transform, [key, value]) => {
 
   const args = Array.isArray(json) ? json : [json];
 
-  return transform[key](...args);
+  try {
+    return transform[key](...args);
+  } catch (error) {
+    throw new Error(`invalid parameters for "${key}": ${error.message}`);
+  }
 };
 
-const makeTransform = (params = []) => Object.entries(params).reduce(addProcess, sharp());
+const makeTransform = (params = {}) => {
+  const sharpHas = sharp();
+  const invalid = Object.keys(params).filter(x => !sharpHas[x]);
+
+  if (invalid.length) {
+    throw new Error(`Invalid transforms: ${invalid.join(', ')}`);
+  }
+
+  return Object.entries(params).reduce(addProcess, sharp());
+};
 
 const request = require('request');
 const { parse } = require('url');
@@ -37,6 +50,13 @@ app
     res.type(query.toFormat || 'jpg');
 
     request(decodeURIComponent(href))
+      .on('error', (error) => {
+        res.type('json');
+        res.send({
+          message: '"href" query parameter invalid',
+          error,
+        });
+      })
       .pipe(makeTransform(query))
       .pipe(res);
   })
