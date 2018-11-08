@@ -1,9 +1,7 @@
 const sharp = require('sharp');
 
 const { PORT = 8080 } = process.env;
-
-const defaultImageUrl =
-  'https://jaysanalysis.files.wordpress.com/2015/04/the-avengers-wallimages1.jpg';
+const defaultImageUrl = 'https://pmcvariety.files.wordpress.com/2014/04/01-avengers-2012.jpg';
 
 // build transform function
 const addProcess = (transform, [key, value]) => {
