@@ -52,10 +52,14 @@ app
         res.type('json');
         res.send({
           message: '"href" query parameter invalid',
-          error,
+          error: error.message,
         });
       })
       .pipe(makeTransform(query))
+      .on('error', ({ message }) => {
+        res.type('json');
+        res.send({ message });
+      })
       .pipe(res);
   })
   .listen(PORT);
