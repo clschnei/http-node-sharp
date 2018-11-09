@@ -1,5 +1,6 @@
 const { parse } = require('url');
 const app = require('express')();
+const fs = require('fs');
 const request = require('request');
 const sharp = require('sharp');
 
@@ -36,6 +37,25 @@ const makeTransform = (params = {}) => {
   return Object.entries(params).reduce(addProcess, sharp());
 };
 
+function getImage(url) {
+  const [extension] = url.match(/\.\w*$/);
+  const cacheLocation = `./.cache/${Buffer.from(url).toString('base64')}${extension}`;
+
+  if (!fs.existsSync('./.cache')) {
+    fs.mkdirSync('./.cache');
+  }
+
+  if (fs.existsSync(cacheLocation)) {
+    console.log(`getting "${url}" from cache...`);
+    return sharp(cacheLocation);
+  }
+
+  const image = request(decodeURIComponent(url));
+
+  image.pipe(fs.createWriteStream(cacheLocation));
+
+  return image;
+}
 
 app
   .get('/', (req, res) => {
@@ -47,15 +67,18 @@ app
 
     res.type(query.toFormat || 'jpg');
 
-    request(decodeURIComponent(href))
-      .on('error', (error) => {
-        res.type('json');
-        res.send({
-          message: '"href" query parameter invalid',
-          error: error.message,
-        });
-      })
-      .pipe(makeTransform(query))
+    const imageStream = getImage(href);
+
+    imageStream.on('error', (error) => {
+      res.type('json');
+      res.send({
+        message: '"href" query parameter invalid',
+        error: error.message,
+      });
+    });
+
+    // send image response
+    imageStream.pipe(makeTransform(query))
       .on('error', ({ message }) => {
         res.type('json');
         res.send({ message });
