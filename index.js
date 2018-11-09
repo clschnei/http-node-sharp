@@ -1,3 +1,6 @@
+const { parse } = require('url');
+const app = require('express')();
+const request = require('request');
 const sharp = require('sharp');
 
 const { PORT = 8080 } = process.env;
@@ -33,9 +36,6 @@ const makeTransform = (params = {}) => {
   return Object.entries(params).reduce(addProcess, sharp());
 };
 
-const request = require('request');
-const { parse } = require('url');
-const app = require('express')();
 
 app
   .get('/', (req, res) => {
