@@ -1,8 +1,10 @@
 const { parse } = require('url');
 const app = require('express')();
+const crypto = require('crypto');
 const fs = require('fs');
 const request = require('request');
 const sharp = require('sharp');
+
 
 const { PORT = 8080 } = process.env;
 const defaultImageUrl = 'https://pmcvariety.files.wordpress.com/2014/04/01-avengers-2012.jpg';
@@ -38,8 +40,9 @@ const makeTransform = (params = {}) => {
 };
 
 function getImage(url) {
+  const hash = crypto.createHash('md5').update(url).digest('hex')
   const [extension] = url.match(/\.\w*$/);
-  const cacheLocation = `./.cache/${Buffer.from(url).toString('base64')}${extension}`;
+  const cacheLocation = `./.cache/${hash}${extension}`;
 
   if (!fs.existsSync('./.cache')) {
     fs.mkdirSync('./.cache');
