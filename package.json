@@ -4,16 +4,15 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "start": "node index.js",
-    "local": "nodemon index.js"
+    "start": "pm2-runtime start index.js -i max",
+    "dev": "yarn && yarn start --watch",
+    "stop": "pm2 stop all"
   },
   "dependencies": {
-    "crypto": "1.0.1",
-    "express": "4.16.3",
-    "request": "2.87.0",
-    "sharp": "0.20.5"
-  },
-  "devDependencies": {
-    "nodemon": "1.17.5"
+    "crypto": "^1.0.1",
+    "express": "^4.17.1",
+    "pm2": "^4.5.0",
+    "request": "^2.88.2",
+    "sharp": "^0.26.1"
   }
 }
