@@ -4,13 +4,12 @@ const crypto = require('crypto');
 const fs = require('fs');
 const request = require('request');
 const sharp = require('sharp');
-
+const path = require('path');
 
 const { PORT = 8080 } = process.env;
-const defaultImageUrl = 'https://pmcvariety.files.wordpress.com/2014/04/01-avengers-2012.jpg';
 
 // build transform function
-const addProcess = (transform, [key, value]) => {
+function addProcess(transform, [key, value]) {
   let json;
 
   try {
@@ -26,65 +25,61 @@ const addProcess = (transform, [key, value]) => {
   } catch (error) {
     throw new Error(`invalid parameters for "${key}": ${error.message}`);
   }
-};
+}
 
-const makeTransform = (params = {}) => {
-  const sharpHas = sharp();
-  const invalid = Object.keys(params).filter(x => !sharpHas[x]);
+const sharpHas = sharp();
+
+function makeTransform(params = {}) {
+  const invalid = Object.keys(params).filter((x) => !sharpHas[x]);
 
   if (invalid.length) {
     throw new Error(`Invalid transforms: ${invalid.join(', ')}`);
   }
 
   return Object.entries(params).reduce(addProcess, sharp());
-};
+}
 
 function getImage(url) {
-  const hash = crypto.createHash('md5').update(url).digest('hex')
-  const [extension] = url.match(/\.\w*$/);
-  const cacheLocation = `./.cache/${hash}${extension}`;
-
-  if (!fs.existsSync('./.cache')) {
-    fs.mkdirSync('./.cache');
+  if (url) {
+    console.log(`getting image: "${url}"`);
+    return request(decodeURIComponent(url));
   }
 
-  if (fs.existsSync(cacheLocation)) {
-    console.log(`getting "${url}" from cache...`);
-    return sharp(cacheLocation);
+  console.log(`returning default image`);
+  return fs.createReadStream(path.resolve(__dirname, './theavengers_lob_crd_03.jpg'));
+}
+
+function setCache({ method }, res, next) {
+  if (method == 'GET') {
+    res.set('Cache-control', `public, max-age=${60 * 5}`);
+  } else {
+    res.set('Cache-control', `no-store`);
   }
 
-  const image = request(decodeURIComponent(url));
-
-  image.pipe(fs.createWriteStream(cacheLocation));
-
-  return image;
+  next();
 }
 
 app
+  .use(setCache)
   .get('/', (req, res) => {
-    const { query } = parse(req.url, true);
-    const { href = defaultImageUrl } = query;
-
-    // FIXME: eventually replace this with a spread assignment
-    delete query.href;
+    const url = parse(req.url, true);
+    const { href = '', ...query } = url.query;
 
     res.type(query.toFormat || 'jpg');
 
-    const imageStream = getImage(href);
-
-    imageStream.on('error', (error) => {
-      res.type('json');
-      res.send({
-        message: '"href" query parameter invalid',
-        error: error.message,
-      });
-    });
+    const image = getImage(href);
 
     // send image response
-    imageStream.pipe(makeTransform(query))
-      .on('error', ({ message }) => {
+    image
+      .pipe(makeTransform(query))
+      .on('error', (error) => {
+        console.error(error);
+
         res.type('json');
-        res.send({ message });
+        res.send({
+          message: '"href" query parameter invalid',
+          error: error.message,
+        });
       })
       .pipe(res);
   })
